@@ -1,0 +1,36 @@
+# Open/hedge venues (mkt_signal naming).
+open_venue = "okex-futures"
+hedge_venue = "binance-futures"
+
+
+# Kafka bootstrap servers.
+# Topics are derived from venue mapping.
+kafka_brokers = "10.61.10.22:9092"
+
+# Kafka consumer group id.
+kafka_group = "crypto_mth_proxy"
+
+# If true, append timestamp suffix to group id (consume only new data).
+kafka_group_unique = true
+
+# Kafka offset reset policy (latest/earliest).
+kafka_offset_reset = "latest"
+
+# Base directory for ZMQ ipc sockets.
+ipc_dir = "/tmp/mth_pubs"
+
+# Period gap warning interval (seconds).
+period_warn_interval_secs = 5
+
+# Tick signal interval (ms), must divide 3000.
+tick_interval_ms = 500
+
+# Per-venue delay (us).
+open_delay_us = 70000
+hedge_delay_us = 2000
+tick_delay_us = 50
+
+# Only publish these symbols.
+# Empty array means publish nothing.
+# Example: ["BTCUSDT", "ETHUSDT"]
+online_symbols = ["ETHUSDT", "SOLUSDT"]
