@@ -1,21 +1,14 @@
 # Open/hedge venues (mkt_signal naming).
-open_venue = "okex-futures"
+# Same venue mode: must keep open_delay_us == hedge_delay_us.
+open_venue = "binance-futures"
 hedge_venue = "binance-futures"
-# If open_venue == hedge_venue, proxy subscribes only one topic.
-# In that case open_delay_us must equal hedge_delay_us.
-
 
 # Kafka bootstrap servers.
-# Topics are derived from venue mapping.
 kafka_brokers = "10.61.10.36:9092"
 
 # Kafka consumer group id.
-kafka_group = "crypto_mth_proxy"
-
-# If true, append timestamp suffix to group id (consume only new data).
+kafka_group = "crypto_mth_proxy_03"
 kafka_group_unique = true
-
-# Kafka offset reset policy (latest/earliest).
 kafka_offset_reset = "latest"
 
 # Base directory for ZMQ ipc sockets.
@@ -28,11 +21,9 @@ period_warn_interval_secs = 5
 tick_interval_ms = 500
 
 # Per-venue delay (us).
-open_delay_us = 70000
+open_delay_us = 2000
 hedge_delay_us = 2000
 tick_delay_us = 0
 
 # Only publish these symbols.
-# Empty array means publish nothing.
-# Example: ["BTCUSDT", "ETHUSDT"]
 online_symbols = ["AAVEUSDT", "ADAUSDT", "ARBUSDT", "ATOMUSDT", "AVAXUSDT", "BARDUSDT", "BCHUSDT", "BNBUSDT", "BTCUSDT", "DOGEUSDT", "DOTUSDT", "ETCUSDT", "ETHUSDT", "HBARUSDT", "HYPEUSDT", "LINKUSDT", "LTCUSDT", "ONDOUSDT", "SOLUSDT", "TONUSDT", "TRUMPUSDT", "TRXUSDT", "XLMUSDT", "XRPUSDT", "WLDUSDT", "FILUSDT"]

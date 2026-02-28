@@ -7,7 +7,7 @@ use std::path::Path;
 use crate::symbol;
 
 fn default_kafka_brokers() -> String {
-    "10.61.10.22:9092".to_string()
+    "10.61.10.36:9092".to_string()
 }
 
 fn default_kafka_group() -> String {

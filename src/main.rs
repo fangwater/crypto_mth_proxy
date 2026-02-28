@@ -3,8 +3,8 @@ mod config;
 mod ipc;
 mod kafka;
 mod period;
-mod symbol;
 mod proto;
+mod symbol;
 
 use anyhow::{ensure, Result};
 use clap::Parser;
@@ -45,6 +45,12 @@ fn main() -> Result<()> {
     ensure!(cfg.open_delay_us >= 0, "open_delay_us must be >= 0");
     ensure!(cfg.hedge_delay_us >= 0, "hedge_delay_us must be >= 0");
     ensure!(cfg.tick_delay_us >= 0, "tick_delay_us must be >= 0");
+    if cfg.open_venue == cfg.hedge_venue {
+        ensure!(
+            cfg.open_delay_us == cfg.hedge_delay_us,
+            "open_delay_us must equal hedge_delay_us when open_venue == hedge_venue"
+        );
+    }
     let online_symbols = cfg.online_symbol_set();
     let mut app = app::App::new(
         &cfg.ipc_dir,
@@ -78,9 +84,31 @@ fn main() -> Result<()> {
     )?;
     let warn_interval = Duration::from_secs(cfg.period_warn_interval_secs);
     let mut aligner = period::PeriodAligner::new(warn_interval);
+    let single_venue_mode = cfg.open_venue == cfg.hedge_venue;
 
     loop {
         if let Some(record) = source.poll(Duration::from_millis(200))? {
+            if single_venue_mode {
+                if record.topic != open_topic {
+                    continue;
+                }
+                let open_msg = app::decode_period_message(&record.payload)?;
+                let hedge_placeholder = proto::PeriodMessage {
+                    period: open_msg.period,
+                    ts: open_msg.ts,
+                    post_ts: open_msg.post_ts,
+                    poster_id: String::new(),
+                    symbol_infos: Vec::new(),
+                };
+                app.handle_pair(
+                    &cfg.open_venue,
+                    &cfg.hedge_venue,
+                    open_msg,
+                    hedge_placeholder,
+                )?;
+                continue;
+            }
+
             let is_open = if record.topic == open_topic {
                 true
             } else if record.topic == hedge_topic {

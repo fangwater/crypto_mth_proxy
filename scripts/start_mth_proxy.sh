@@ -10,12 +10,8 @@ if ! command -v pm2 >/dev/null 2>&1; then
 fi
 
 NAMESPACE="$(basename "${BASE_DIR}")"
-NAME="mth_proxy"
-CONFIG_PATH="${BASE_DIR}/config.toml"
-if [[ ! -f "$CONFIG_PATH" ]]; then
-  echo "[ERROR] config.toml 不存在: ${CONFIG_PATH}" >&2
-  exit 1
-fi
+CONFIG_DIR="${BASE_DIR}/configs"
+LEGACY_CONFIG_PATH="${BASE_DIR}/config.toml"
 
 BIN_CANDIDATES=(
   "${BASE_DIR}/crypto_mth_proxy"
@@ -35,18 +31,59 @@ if [[ -z "$BIN_PATH" ]]; then
   exit 1
 fi
 
-echo "[INFO] Restarting ${NAME}"
-pm2 delete "$NAME" --namespace "$NAMESPACE" >/dev/null 2>&1 || true
+sanitize_name() {
+  local file_path="$1"
+  local base
+  base="$(basename "$file_path" .toml)"
+  base="${base//[^a-zA-Z0-9_-]/_}"
+  echo "mth_proxy_${base}"
+}
 
-RUST_LOG="${RUST_LOG:-info}" pm2 start "$BIN_PATH" \
-  --name "$NAME" \
-  --namespace "$NAMESPACE" \
-  --cwd "$BASE_DIR" \
-  -- \
-  --config "$CONFIG_PATH"
+declare -a CONFIG_FILES=()
+if [[ -d "$CONFIG_DIR" ]]; then
+  shopt -s nullglob
+  CONFIG_FILES=( "$CONFIG_DIR"/*.toml )
+  shopt -u nullglob
+fi
+
+if [[ ${#CONFIG_FILES[@]} -eq 0 ]]; then
+  if [[ -f "$LEGACY_CONFIG_PATH" ]]; then
+    CONFIG_FILES=( "$LEGACY_CONFIG_PATH" )
+  else
+    echo "[ERROR] 未找到配置文件: ${CONFIG_DIR}/*.toml 或 ${LEGACY_CONFIG_PATH}" >&2
+    exit 1
+  fi
+fi
+
+mapfile -t CONFIG_FILES < <(printf '%s\n' "${CONFIG_FILES[@]}" | sort)
+
+# If switching to multi-config mode, clean up the old single-process name.
+if [[ ${#CONFIG_FILES[@]} -gt 1 ]]; then
+  pm2 delete "mth_proxy" --namespace "$NAMESPACE" >/dev/null 2>&1 || true
+fi
+
+STARTED=0
+for CONFIG_PATH in "${CONFIG_FILES[@]}"; do
+  if [[ "$(basename "$CONFIG_PATH")" == "config.toml" ]]; then
+    NAME="mth_proxy"
+  else
+    NAME="$(sanitize_name "$CONFIG_PATH")"
+  fi
+
+  echo "[INFO] Restarting ${NAME} with $(basename "$CONFIG_PATH")"
+  pm2 delete "$NAME" --namespace "$NAMESPACE" >/dev/null 2>&1 || true
+
+  RUST_LOG="${RUST_LOG:-info}" pm2 start "$BIN_PATH" \
+    --name "$NAME" \
+    --namespace "$NAMESPACE" \
+    --cwd "$BASE_DIR" \
+    -- \
+    --config "$CONFIG_PATH"
+  STARTED=$((STARTED + 1))
+done
 
 echo ""
-echo "[INFO] Started: ${NAME}"
+echo "[INFO] Started ${STARTED} process(es)"
 echo "Namespace: ${NAMESPACE}"
-echo "Logs: pm2 logs --namespace ${NAMESPACE} ${NAME}"
+echo "Logs: pm2 logs --namespace ${NAMESPACE}"
 echo "Status: pm2 status --namespace ${NAMESPACE}"

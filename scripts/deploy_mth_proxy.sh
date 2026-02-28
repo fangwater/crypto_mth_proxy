@@ -63,6 +63,11 @@ for script in start_mth_proxy.sh stop_mth_proxy.sh pm2_log_set.sh; do
   fi
 done
 
+if [[ -d "$ROOT_DIR/configs" ]]; then
+  mkdir -p "$TARGET_DIR/configs"
+  rsync -a --delete "$ROOT_DIR/configs/" "$TARGET_DIR/configs/"
+fi
+
 if [[ -f "$ROOT_DIR/config.toml" ]]; then
   rsync -a "$ROOT_DIR/config.toml" "$TARGET_DIR/"
 fi
