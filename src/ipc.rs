@@ -53,11 +53,9 @@ impl PublisherManager {
         }
 
         match self.sockets.get(&key) {
-            Some(socket) => {
-                socket
-                    .send(payload, 0)
-                    .map_err(|err| anyhow!("zmq send failed: {err}"))
-            }
+            Some(socket) => socket
+                .send(payload, 0)
+                .map_err(|err| anyhow!("zmq send failed: {err}")),
             None => Ok(()),
         }
     }
@@ -82,5 +80,4 @@ impl PublisherManager {
         dir.push(filename);
         Ok(dir)
     }
-
 }

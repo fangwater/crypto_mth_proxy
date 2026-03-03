@@ -145,13 +145,7 @@ impl App {
                 .sort_by_key(|event| (event.timestamp(), event.sort_rank()));
 
             if self.should_dump_symbol(&symbol) {
-                self.dump_symbol_events(
-                    &channel,
-                    open_venue,
-                    hedge_venue,
-                    &symbol,
-                    &bucket.events,
-                );
+                self.dump_symbol_events(&channel, open_venue, hedge_venue, &symbol, &bucket.events);
                 self.dumped = true;
                 if let Some(limit) = self.dump_period_limit {
                     self.dump_periods += 1;
@@ -185,7 +179,11 @@ impl App {
         log_period_stats(exchange, &msg);
 
         for symbol_info in msg.symbol_infos {
-            let SymbolInfo { symbol, trades, incs } = symbol_info;
+            let SymbolInfo {
+                symbol,
+                trades,
+                incs,
+            } = symbol_info;
             let normalized = symbol::normalize_for_pairing(&symbol, exchange);
             if normalized.is_empty() {
                 continue;
@@ -196,16 +194,15 @@ impl App {
 
             info!(
                 "symbol stats exchange={} symbol={} trades={} incs={}",
-                exchange, normalized,
+                exchange,
+                normalized,
                 trades.len(),
                 incs.len()
             );
 
             let mut events = Vec::with_capacity(trades.len() + incs.len());
             for trade in trades {
-                if let Some(event) =
-                    Event::from_trade(trade, Origin::Open, self.open_delay_us)
-                {
+                if let Some(event) = Event::from_trade(trade, Origin::Open, self.open_delay_us) {
                     events.push(event);
                 }
             }
@@ -241,7 +238,11 @@ impl App {
             Side::Hedge => (Origin::Hedge, self.hedge_delay_us),
         };
         for symbol_info in msg.symbol_infos {
-            let SymbolInfo { symbol, trades, incs } = symbol_info;
+            let SymbolInfo {
+                symbol,
+                trades,
+                incs,
+            } = symbol_info;
             let normalized = symbol::normalize_for_pairing(&symbol, venue);
             if normalized.is_empty() {
                 continue;
@@ -268,12 +269,9 @@ impl App {
                 }
             }
             for inc in incs {
-                bucket.events.extend(Event::from_inc(
-                    inc,
-                    origin,
-                    delay_us,
-                    self.force_snapshot,
-                ));
+                bucket
+                    .events
+                    .extend(Event::from_inc(inc, origin, delay_us, self.force_snapshot));
             }
         }
     }
@@ -462,7 +460,11 @@ impl Event {
         force_snapshot: bool,
     ) -> Vec<Self> {
         let ts_us = normalize_ts_us(inc.timestamp).saturating_add(delay_us);
-        let is_snapshot = if force_snapshot || inc.is_snapshot { 1 } else { 0 };
+        let is_snapshot = if force_snapshot || inc.is_snapshot {
+            1
+        } else {
+            0
+        };
         let mut out = Vec::with_capacity(inc.bids.len() + inc.asks.len());
 
         for level in inc.bids {
