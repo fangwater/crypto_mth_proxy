@@ -63,14 +63,13 @@ for script in start_mth_proxy.sh stop_mth_proxy.sh pm2_log_set.sh; do
   fi
 done
 
-if [[ -d "$ROOT_DIR/configs" ]]; then
-  mkdir -p "$TARGET_DIR/configs"
-  rsync -a --delete "$ROOT_DIR/configs/" "$TARGET_DIR/configs/"
+if [[ ! -d "$ROOT_DIR/configs" ]]; then
+  echo "[ERROR] 未找到配置目录: $ROOT_DIR/configs" >&2
+  exit 1
 fi
 
-if [[ -f "$ROOT_DIR/config.toml" ]]; then
-  rsync -a "$ROOT_DIR/config.toml" "$TARGET_DIR/"
-fi
+mkdir -p "$TARGET_DIR/configs"
+rsync -a --delete "$ROOT_DIR/configs/" "$TARGET_DIR/configs/"
 
 echo "[INFO] $BIN_NAME 部署完成到 $TARGET_DIR"
 echo "[INFO] 启动示例: cd $TARGET_DIR && ./scripts/start_mth_proxy.sh"

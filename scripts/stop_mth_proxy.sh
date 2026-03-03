@@ -11,7 +11,6 @@ fi
 
 NAMESPACE="$(basename "${BASE_DIR}")"
 CONFIG_DIR="${BASE_DIR}/configs"
-LEGACY_CONFIG_PATH="${BASE_DIR}/config.toml"
 
 sanitize_name() {
   local file_path="$1"
@@ -28,24 +27,14 @@ if [[ -d "$CONFIG_DIR" ]]; then
   shopt -u nullglob
 fi
 
-if [[ ${#CONFIG_FILES[@]} -eq 0 && -f "$LEGACY_CONFIG_PATH" ]]; then
-  CONFIG_FILES=( "$LEGACY_CONFIG_PATH" )
+if [[ ${#CONFIG_FILES[@]} -gt 0 ]]; then
+  mapfile -t CONFIG_FILES < <(printf '%s\n' "${CONFIG_FILES[@]}" | sort)
 fi
-
-mapfile -t CONFIG_FILES < <(printf '%s\n' "${CONFIG_FILES[@]}" | sort)
 
 declare -a NAMES=()
 for CONFIG_PATH in "${CONFIG_FILES[@]}"; do
-  if [[ "$(basename "$CONFIG_PATH")" == "config.toml" ]]; then
-    NAMES+=( "mth_proxy" )
-  else
-    NAMES+=( "$(sanitize_name "$CONFIG_PATH")" )
-  fi
+  NAMES+=( "$(sanitize_name "$CONFIG_PATH")" )
 done
-
-if [[ ${#NAMES[@]} -eq 0 ]]; then
-  NAMES=( "mth_proxy" )
-fi
 
 STOPPED=0
 for NAME in "${NAMES[@]}"; do

@@ -11,7 +11,6 @@ fi
 
 NAMESPACE="$(basename "${BASE_DIR}")"
 CONFIG_DIR="${BASE_DIR}/configs"
-LEGACY_CONFIG_PATH="${BASE_DIR}/config.toml"
 
 BIN_CANDIDATES=(
   "${BASE_DIR}/crypto_mth_proxy"
@@ -47,12 +46,8 @@ if [[ -d "$CONFIG_DIR" ]]; then
 fi
 
 if [[ ${#CONFIG_FILES[@]} -eq 0 ]]; then
-  if [[ -f "$LEGACY_CONFIG_PATH" ]]; then
-    CONFIG_FILES=( "$LEGACY_CONFIG_PATH" )
-  else
-    echo "[ERROR] 未找到配置文件: ${CONFIG_DIR}/*.toml 或 ${LEGACY_CONFIG_PATH}" >&2
-    exit 1
-  fi
+  echo "[ERROR] 未找到配置文件: ${CONFIG_DIR}/*.toml" >&2
+  exit 1
 fi
 
 mapfile -t CONFIG_FILES < <(printf '%s\n' "${CONFIG_FILES[@]}" | sort)
@@ -64,11 +59,7 @@ fi
 
 STARTED=0
 for CONFIG_PATH in "${CONFIG_FILES[@]}"; do
-  if [[ "$(basename "$CONFIG_PATH")" == "config.toml" ]]; then
-    NAME="mth_proxy"
-  else
-    NAME="$(sanitize_name "$CONFIG_PATH")"
-  fi
+  NAME="$(sanitize_name "$CONFIG_PATH")"
 
   echo "[INFO] Restarting ${NAME} with $(basename "$CONFIG_PATH")"
   pm2 delete "$NAME" --namespace "$NAMESPACE" >/dev/null 2>&1 || true
