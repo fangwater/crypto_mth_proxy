@@ -13,8 +13,8 @@ NAMESPACE="$(basename "${BASE_DIR}")"
 CONFIG_DIR="${BASE_DIR}/configs"
 
 BIN_CANDIDATES=(
-  "${BASE_DIR}/crypto_mth_proxy"
-  "${BASE_DIR}/target/release/crypto_mth_proxy"
+  "${BASE_DIR}/dat_proxy"
+  "${BASE_DIR}/target/release/dat_proxy"
 )
 
 BIN_PATH=""
@@ -26,7 +26,7 @@ for cand in "${BIN_CANDIDATES[@]}"; do
 done
 
 if [[ -z "$BIN_PATH" ]]; then
-  echo "[ERROR] crypto_mth_proxy binary not found. Build first with: cargo build --release" >&2
+  echo "[ERROR] dat_proxy binary not found. Build first with: cargo build --release --bin dat_proxy" >&2
   exit 1
 fi
 
@@ -35,7 +35,7 @@ sanitize_name() {
   local base
   base="$(basename "$file_path" .toml)"
   base="${base//[^a-zA-Z0-9_-]/_}"
-  echo "mth_proxy_${base}"
+  echo "dat_proxy_${base}"
 }
 
 declare -a CONFIG_FILES=()
@@ -52,9 +52,9 @@ fi
 
 mapfile -t CONFIG_FILES < <(printf '%s\n' "${CONFIG_FILES[@]}" | sort)
 
-# If switching to multi-config mode, clean up the old single-process name.
+# If switching to multi-config mode, clean up old single-process names.
 if [[ ${#CONFIG_FILES[@]} -gt 1 ]]; then
-  pm2 delete "mth_proxy" --namespace "$NAMESPACE" >/dev/null 2>&1 || true
+  pm2 delete "dat_proxy" --namespace "$NAMESPACE" >/dev/null 2>&1 || true
 fi
 
 STARTED=0

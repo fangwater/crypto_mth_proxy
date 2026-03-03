@@ -81,15 +81,6 @@ impl App {
         })
     }
 
-    pub fn handle_bytes(&mut self, exchange: &str, bytes: &[u8]) -> Result<()> {
-        let msg = decode_period_message(bytes)?;
-        self.publish_message(exchange, msg)
-    }
-
-    pub fn handle_message(&mut self, exchange: &str, msg: PeriodMessage) -> Result<()> {
-        self.publish_message(exchange, msg)
-    }
-
     pub fn handle_pair(
         &mut self,
         open_venue: &str,
@@ -169,57 +160,6 @@ impl App {
                 let msg = build_stream_message(&event);
                 self.publishers
                     .publish(&channel, &symbol, AssetType::Stream, msg)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    fn publish_message(&mut self, exchange: &str, msg: PeriodMessage) -> Result<()> {
-        log_period_stats(exchange, &msg);
-
-        for symbol_info in msg.symbol_infos {
-            let SymbolInfo {
-                symbol,
-                trades,
-                incs,
-            } = symbol_info;
-            let normalized = symbol::normalize_for_pairing(&symbol, exchange);
-            if normalized.is_empty() {
-                continue;
-            }
-            if !self.online_symbols.contains(&normalized) {
-                continue;
-            }
-
-            info!(
-                "symbol stats exchange={} symbol={} trades={} incs={}",
-                exchange,
-                normalized,
-                trades.len(),
-                incs.len()
-            );
-
-            let mut events = Vec::with_capacity(trades.len() + incs.len());
-            for trade in trades {
-                if let Some(event) = Event::from_trade(trade, Origin::Open, self.open_delay_us) {
-                    events.push(event);
-                }
-            }
-            for inc in incs {
-                events.extend(Event::from_inc(
-                    inc,
-                    Origin::Open,
-                    self.open_delay_us,
-                    self.force_snapshot,
-                ));
-            }
-            events.sort_by_key(|event| event.timestamp());
-
-            for event in events {
-                let msg = build_stream_message(&event);
-                self.publishers
-                    .publish(exchange, &normalized, AssetType::Stream, msg)?;
             }
         }
 

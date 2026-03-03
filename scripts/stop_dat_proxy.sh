@@ -17,7 +17,7 @@ sanitize_name() {
   local base
   base="$(basename "$file_path" .toml)"
   base="${base//[^a-zA-Z0-9_-]/_}"
-  echo "mth_proxy_${base}"
+  echo "dat_proxy_${base}"
 }
 
 declare -a CONFIG_FILES=()
@@ -44,10 +44,10 @@ for NAME in "${NAMES[@]}"; do
   fi
 done
 
-# Also try legacy single-process name in case deployment switched modes.
-if [[ ! " ${NAMES[*]} " =~ [[:space:]]mth_proxy[[:space:]] ]]; then
-  if pm2 delete "mth_proxy" --namespace "$NAMESPACE" >/dev/null 2>&1; then
-    echo "[INFO] Stopped: mth_proxy (namespace: ${NAMESPACE})"
+# Also try single-process name in case deployment switched modes.
+if [[ ! " ${NAMES[*]} " =~ [[:space:]]dat_proxy[[:space:]] ]]; then
+  if pm2 delete "dat_proxy" --namespace "$NAMESPACE" >/dev/null 2>&1; then
+    echo "[INFO] Stopped: dat_proxy (namespace: ${NAMESPACE})"
     STOPPED=$((STOPPED + 1))
   fi
 fi

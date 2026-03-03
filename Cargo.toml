@@ -2,6 +2,11 @@
 name = "crypto_mth_proxy"
 version = "0.1.0"
 edition = "2021"
+autobins = false
+
+[[bin]]
+name = "dat_proxy"
+path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0"
