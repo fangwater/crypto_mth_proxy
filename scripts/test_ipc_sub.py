@@ -57,24 +57,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def format_message(payload: bytes) -> str:
-    if len(payload) != 28:
-        return f"skip invalid payload len={len(payload)}"
-
-    event_type, side_id, is_snapshot, origin, ts_us, price, amount = struct.unpack(
-        "<BBBBqdd", payload
-    )
-
-    event = EVENT_MAP.get(event_type, f"unknown({event_type})")
-    side = SIDE_MAP.get(side_id, str(side_id))
-    origin_text = ORIGIN_MAP.get(origin, str(origin))
-
-    return (
-        f"event={event} ts_us={ts_us} side={side} is_snapshot={is_snapshot} "
-        f"origin={origin_text} price={price:.10f} amount={amount:.10f}"
-    )
-
-
 def main() -> int:
     args = parse_args()
 
@@ -93,24 +75,47 @@ def main() -> int:
     print(f"[INFO] subscribe endpoint: {endpoint}")
     print("[INFO] waiting for messages ... (Ctrl+C to exit)")
 
-    received = 0
+    printed = 0
+    skipped_zero_price = 0
     try:
         while True:
             if not sock.poll(args.timeout_ms):
                 continue
 
             msg = sock.recv()
-            received += 1
-            print(f"[{received}] {format_message(msg)}")
+            if len(msg) != 28:
+                continue
 
-            if args.max_msg > 0 and received >= args.max_msg:
+            event_type, side_id, is_snapshot, origin, ts_us, price, amount = struct.unpack(
+                "<BBBBqdd", msg
+            )
+
+            # Filter noisy zero-price messages (typically tick events) at script layer.
+            if price == 0.0:
+                skipped_zero_price += 1
+                continue
+
+            event = EVENT_MAP.get(event_type, f"unknown({event_type})")
+            side = SIDE_MAP.get(side_id, str(side_id))
+            origin_text = ORIGIN_MAP.get(origin, str(origin))
+
+            printed += 1
+            print(
+                f"[{printed}] event={event} ts_us={ts_us} side={side} "
+                f"is_snapshot={is_snapshot} origin={origin_text} "
+                f"price={price:.10f} amount={amount:.10f}"
+            )
+
+            if args.max_msg > 0 and printed >= args.max_msg:
                 break
     except KeyboardInterrupt:
         pass
     finally:
         sock.close(0)
 
-    print(f"[INFO] exit after receiving {received} message(s)")
+    print(
+        f"[INFO] exit printed={printed} skipped_zero_price={skipped_zero_price}"
+    )
     return 0
 
 
