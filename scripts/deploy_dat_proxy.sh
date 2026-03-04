@@ -67,22 +67,37 @@ if ! command -v scp >/dev/null 2>&1; then
   exit 1
 fi
 
+echo "[INFO] 获取远端 HOME"
+REMOTE_HOME="$(ssh "$REMOTE_HOST" 'printf %s "$HOME"')"
+if [[ -z "$REMOTE_HOME" ]]; then
+  echo "[ERROR] 无法获取远端 HOME: $REMOTE_HOST" >&2
+  exit 1
+fi
+
+if [[ "$TARGET_DIR" == \$HOME/* ]]; then
+  TARGET_DIR="${REMOTE_HOME}/${TARGET_DIR#\$HOME/}"
+elif [[ "$TARGET_DIR" == "~/"* ]]; then
+  TARGET_DIR="${REMOTE_HOME}/${TARGET_DIR#\~/}"
+elif [[ "$TARGET_DIR" != /* ]]; then
+  TARGET_DIR="${REMOTE_HOME}/${TARGET_DIR}"
+fi
+
 echo "[INFO] 构建 $BIN_NAME (release)"
 cargo build --release --bin "$BIN_NAME"
 
 echo "[INFO] 远端部署目标: ${REMOTE_HOST}:${TARGET_DIR}"
 echo "[INFO] 准备远端目录"
-ssh "$REMOTE_HOST" "mkdir -p $TARGET_DIR/scripts $TARGET_DIR/configs"
+ssh "$REMOTE_HOST" "mkdir -p '$TARGET_DIR/scripts' '$TARGET_DIR/configs'"
 
 echo "[INFO] 上传二进制"
 scp "$BIN_PATH" "$REMOTE_HOST:$TARGET_DIR/$BIN_NAME"
-ssh "$REMOTE_HOST" "chmod +x $TARGET_DIR/$BIN_NAME"
+ssh "$REMOTE_HOST" "chmod +x '$TARGET_DIR/$BIN_NAME'"
 
 echo "[INFO] 上传脚本"
 for script in start_dat_proxy.sh stop_dat_proxy.sh pm2_log_set.sh test_ipc_sub.py; do
   if [[ -f "$ROOT_DIR/scripts/$script" ]]; then
     scp "$ROOT_DIR/scripts/$script" "$REMOTE_HOST:$TARGET_DIR/scripts/$script"
-    ssh "$REMOTE_HOST" "chmod +x $TARGET_DIR/scripts/$script"
+    ssh "$REMOTE_HOST" "chmod +x '$TARGET_DIR/scripts/$script'"
   fi
 done
 
@@ -92,7 +107,7 @@ if [[ ! -d "$ROOT_DIR/configs" ]]; then
 fi
 
 echo "[INFO] 同步配置文件"
-ssh "$REMOTE_HOST" "rm -f $TARGET_DIR/configs/*.toml"
+ssh "$REMOTE_HOST" "rm -f '$TARGET_DIR/configs/'*.toml"
 for cfg in "$ROOT_DIR"/configs/*.toml; do
   scp "$cfg" "$REMOTE_HOST:$TARGET_DIR/configs/"
 done
