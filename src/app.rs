@@ -17,6 +17,7 @@ const EVT_INC: u8 = 1;
 const EVT_TRADE: u8 = 2;
 const EVT_TICK: u8 = 3;
 const PERIOD_MS: i64 = 3_000;
+const FOCUS_SYMBOLS: [&str; 2] = ["BTCUSDT", "ETHUSDT"];
 
 pub struct App {
     publishers: PublisherManager,
@@ -110,6 +111,15 @@ impl App {
         self.ingest_message(hedge_venue, Side::Hedge, hedge_msg, &mut buckets);
 
         let tick_times = self.tick_times_us(period_start_us);
+        let single_venue_mode = open_venue == hedge_venue;
+        self.log_focus_symbol_stats(
+            &channel,
+            open_venue,
+            hedge_venue,
+            single_venue_mode,
+            tick_times.len(),
+            &buckets,
+        );
 
         for (symbol, mut bucket) in buckets {
             if bucket.events.is_empty() {
@@ -119,17 +129,6 @@ impl App {
             for ts_us in &tick_times {
                 bucket.events.push(Event::tick(*ts_us));
             }
-
-            info!(
-                "symbol stats channel={} symbol={} open_trades={} open_incs={} hedge_trades={} hedge_incs={} ticks={}",
-                channel,
-                symbol,
-                bucket.open_trades,
-                bucket.open_incs,
-                bucket.hedge_trades,
-                bucket.hedge_incs,
-                tick_times.len()
-            );
 
             bucket
                 .events
@@ -214,6 +213,58 @@ impl App {
                     .extend(Event::from_inc(inc, origin, delay_us, self.force_snapshot));
             }
         }
+    }
+
+    fn log_focus_symbol_stats(
+        &self,
+        channel: &str,
+        open_venue: &str,
+        hedge_venue: &str,
+        single_venue_mode: bool,
+        ticks: usize,
+        buckets: &HashMap<String, SymbolBucket>,
+    ) {
+        let mut details = Vec::with_capacity(FOCUS_SYMBOLS.len());
+        for symbol in FOCUS_SYMBOLS {
+            match buckets.get(symbol) {
+                Some(bucket) => {
+                    if single_venue_mode {
+                        details.push(format!(
+                            "{}{{open_trades={},open_incs={},hedge=NA,symbol_events={}}}",
+                            symbol,
+                            bucket.open_trades,
+                            bucket.open_incs,
+                            bucket.events.len()
+                        ));
+                    } else {
+                        details.push(format!(
+                            "{}{{open_trades={},open_incs={},hedge_trades={},hedge_incs={},symbol_events={}}}",
+                            symbol,
+                            bucket.open_trades,
+                            bucket.open_incs,
+                            bucket.hedge_trades,
+                            bucket.hedge_incs,
+                            bucket.events.len()
+                        ));
+                    }
+                }
+                None => details.push(format!("{}{{no_data}}", symbol)),
+            }
+        }
+
+        info!(
+            "focus stats channel={} open_venue={} hedge_venue={} mode={} ticks={} details=[{}]",
+            channel,
+            open_venue,
+            hedge_venue,
+            if single_venue_mode {
+                "single_venue(open_only)"
+            } else {
+                "dual_venue"
+            },
+            ticks,
+            details.join("; ")
+        );
     }
 
     fn tick_times_us(&self, period_start_us: i64) -> Vec<i64> {
