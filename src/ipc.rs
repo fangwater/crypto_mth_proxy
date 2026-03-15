@@ -4,6 +4,8 @@ use std::fs;
 use std::path::PathBuf;
 use zmq::Message;
 
+const ZMQ_HWM: i32 = 100_000;
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum AssetType {
     Stream,
@@ -68,6 +70,7 @@ impl PublisherManager {
 
         let endpoint = format!("ipc://{}", path.display());
         let socket = self.context.socket(zmq::PUB)?;
+        socket.set_sndhwm(ZMQ_HWM)?;
         socket.bind(&endpoint)?;
         Ok(socket)
     }

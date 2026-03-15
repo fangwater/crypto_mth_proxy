@@ -121,13 +121,17 @@ impl App {
             &buckets,
         );
 
-        for (symbol, mut bucket) in buckets {
-            if bucket.events.is_empty() {
-                continue;
-            }
+        let mut symbols: Vec<String> = self.online_symbols.iter().cloned().collect();
+        symbols.sort_unstable();
 
+        for symbol in symbols {
+            let mut bucket = buckets.remove(&symbol).unwrap_or_default();
             for ts_us in &tick_times {
                 bucket.events.push(Event::tick(*ts_us));
+            }
+
+            if bucket.events.is_empty() {
+                continue;
             }
 
             bucket
@@ -274,10 +278,18 @@ impl App {
         }
         let step_us = self.tick_interval_ms.saturating_mul(1_000);
         let period_us = PERIOD_MS.saturating_mul(1_000);
-        let mut offset_us = 0i64;
-        while offset_us < period_us {
-            out.push(period_start_us.saturating_add(offset_us));
-            offset_us += step_us;
+        let period_end_us = period_start_us.saturating_add(period_us);
+        let anchor_us = self.tick_delay_us;
+        let delta_us = period_start_us.saturating_sub(anchor_us);
+        let remainder_us = delta_us.rem_euclid(step_us);
+        let mut next_tick_us = if remainder_us == 0 {
+            period_start_us
+        } else {
+            period_start_us.saturating_add(step_us.saturating_sub(remainder_us))
+        };
+        while next_tick_us < period_end_us {
+            out.push(next_tick_us);
+            next_tick_us = next_tick_us.saturating_add(step_us);
         }
         out
     }

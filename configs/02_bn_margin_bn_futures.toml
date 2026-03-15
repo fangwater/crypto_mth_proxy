@@ -1,13 +1,12 @@
 # Open/hedge venues (mkt_signal naming).
-# okex-futures maps to Kafka topic "okex-swap".
-open_venue = "okex-futures"
+open_venue = "binance-margin"
 hedge_venue = "binance-futures"
 
 # Kafka bootstrap servers.
 kafka_brokers = "10.61.10.36:9092"
 
 # Kafka consumer group id.
-kafka_group = "crypto_mth_proxy_01"
+kafka_group = "crypto_mth_proxy_02"
 kafka_group_unique = true
 kafka_offset_reset = "latest"
 
@@ -17,11 +16,11 @@ ipc_dir = "/tmp/mth_pubs"
 # Period gap warning interval (seconds).
 period_warn_interval_secs = 5
 
-# Tick signal interval (ms), must divide 3000.
-tick_interval_ms = 500
+# Tick signal interval (ms). Ticks are aligned on a continuous timeline across 3s periods.
+tick_interval_ms = 5000
 
 # Per-venue delay (us).
-open_delay_us = 50000
+open_delay_us = 2000
 hedge_delay_us = 2000
 tick_delay_us = 0
 

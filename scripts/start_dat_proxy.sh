@@ -35,19 +35,18 @@ sanitize_name() {
   local base
   base="$(basename "$file_path" .toml)"
   base="${base//[^a-zA-Z0-9_-]/_}"
-  if [[ "$base" =~ ^([0-9]+)_ ]]; then
-    echo "dat_proxy_${BASH_REMATCH[1]}"
-    return
-  fi
   echo "dat_proxy_${base}"
 }
 
-legacy_name() {
+legacy_names() {
   local file_path="$1"
   local base
   base="$(basename "$file_path" .toml)"
   base="${base//[^a-zA-Z0-9_-]/_}"
   echo "dat_proxy_${base}"
+  if [[ "$base" =~ ^([0-9]+)_ ]]; then
+    echo "dat_proxy_${BASH_REMATCH[1]}"
+  fi
 }
 
 declare -a CONFIG_FILES=()
@@ -72,13 +71,12 @@ fi
 STARTED=0
 for CONFIG_PATH in "${CONFIG_FILES[@]}"; do
   NAME="$(sanitize_name "$CONFIG_PATH")"
-  LEGACY_NAME="$(legacy_name "$CONFIG_PATH")"
+  mapfile -t LEGACY_NAMES < <(legacy_names "$CONFIG_PATH")
 
   echo "[INFO] Restarting ${NAME} with $(basename "$CONFIG_PATH")"
-  pm2 delete "$NAME" --namespace "$NAMESPACE" >/dev/null 2>&1 || true
-  if [[ "$LEGACY_NAME" != "$NAME" ]]; then
-    pm2 delete "$LEGACY_NAME" --namespace "$NAMESPACE" >/dev/null 2>&1 || true
-  fi
+  for OLD_NAME in "${LEGACY_NAMES[@]}"; do
+    pm2 delete "$OLD_NAME" --namespace "$NAMESPACE" >/dev/null 2>&1 || true
+  done
 
   RUST_LOG="${RUST_LOG:-info}" pm2 start "$BIN_PATH" \
     --name "$NAME" \

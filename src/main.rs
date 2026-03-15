@@ -38,10 +38,7 @@ fn main() -> Result<()> {
         }
         return Ok(());
     }
-    ensure!(
-        cfg.tick_interval_ms > 0 && 3_000 % cfg.tick_interval_ms == 0,
-        "tick_interval_ms must be > 0 and divide 3000"
-    );
+    ensure!(cfg.tick_interval_ms > 0, "tick_interval_ms must be > 0");
     ensure!(cfg.open_delay_us >= 0, "open_delay_us must be >= 0");
     ensure!(cfg.hedge_delay_us >= 0, "hedge_delay_us must be >= 0");
     ensure!(cfg.tick_delay_us >= 0, "tick_delay_us must be >= 0");

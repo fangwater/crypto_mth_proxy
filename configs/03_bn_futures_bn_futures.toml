@@ -17,8 +17,8 @@ ipc_dir = "/tmp/mth_pubs"
 # Period gap warning interval (seconds).
 period_warn_interval_secs = 5
 
-# Tick signal interval (ms), must divide 3000.
-tick_interval_ms = 500
+# Tick signal interval (ms). Ticks are aligned on a continuous timeline across 3s periods.
+tick_interval_ms = 5000
 
 # Per-venue delay (us).
 open_delay_us = 2000

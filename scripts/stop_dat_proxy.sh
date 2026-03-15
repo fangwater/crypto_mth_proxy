@@ -17,19 +17,18 @@ sanitize_name() {
   local base
   base="$(basename "$file_path" .toml)"
   base="${base//[^a-zA-Z0-9_-]/_}"
-  if [[ "$base" =~ ^([0-9]+)_ ]]; then
-    echo "dat_proxy_${BASH_REMATCH[1]}"
-    return
-  fi
   echo "dat_proxy_${base}"
 }
 
-legacy_name() {
+legacy_names() {
   local file_path="$1"
   local base
   base="$(basename "$file_path" .toml)"
   base="${base//[^a-zA-Z0-9_-]/_}"
   echo "dat_proxy_${base}"
+  if [[ "$base" =~ ^([0-9]+)_ ]]; then
+    echo "dat_proxy_${BASH_REMATCH[1]}"
+  fi
 }
 
 declare -a CONFIG_FILES=()
@@ -47,10 +46,12 @@ declare -a NAMES=()
 for CONFIG_PATH in "${CONFIG_FILES[@]}"; do
   NAME="$(sanitize_name "$CONFIG_PATH")"
   NAMES+=( "$NAME" )
-  LEGACY_NAME="$(legacy_name "$CONFIG_PATH")"
-  if [[ "$LEGACY_NAME" != "$NAME" ]]; then
-    NAMES+=( "$LEGACY_NAME" )
-  fi
+  mapfile -t LEGACY_NAMES < <(legacy_names "$CONFIG_PATH")
+  for OLD_NAME in "${LEGACY_NAMES[@]}"; do
+    if [[ "$OLD_NAME" != "$NAME" ]]; then
+      NAMES+=( "$OLD_NAME" )
+    fi
+  done
 done
 
 STOPPED=0
