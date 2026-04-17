@@ -3,6 +3,42 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+CONFIG_FILTER=""
+
+usage() {
+  cat <<'EOF'
+Usage:
+  stop_dat_proxy.sh [--config <config_name_or_prefix>]
+
+Examples:
+  bash scripts/stop_dat_proxy.sh
+  bash scripts/stop_dat_proxy.sh --config 04
+  bash scripts/stop_dat_proxy.sh --config 04_ok_futures_ok_futures
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --config)
+      CONFIG_FILTER="${2:-}"
+      if [[ -z "$CONFIG_FILTER" ]]; then
+        echo "[ERROR] --config 需要一个配置名或前缀" >&2
+        usage >&2
+        exit 1
+      fi
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "[ERROR] 未知参数: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
 
 if ! command -v pm2 >/dev/null 2>&1; then
   echo "[ERROR] pm2 未安装，请先安装 pm2" >&2
@@ -31,6 +67,26 @@ legacy_names() {
   fi
 }
 
+matches_config_filter() {
+  local file_path="$1"
+  local filter="$2"
+  local base
+  base="$(basename "$file_path" .toml)"
+
+  if [[ -z "$filter" ]]; then
+    return 0
+  fi
+
+  filter="${filter%.toml}"
+  if [[ "$base" == "$filter" ]]; then
+    return 0
+  fi
+  if [[ "$base" =~ ^([0-9]+)_ ]] && [[ "${BASH_REMATCH[1]}" == "$filter" ]]; then
+    return 0
+  fi
+  return 1
+}
+
 declare -a CONFIG_FILES=()
 if [[ -d "$CONFIG_DIR" ]]; then
   shopt -s nullglob
@@ -40,6 +96,21 @@ fi
 
 if [[ ${#CONFIG_FILES[@]} -gt 0 ]]; then
   mapfile -t CONFIG_FILES < <(printf '%s\n' "${CONFIG_FILES[@]}" | sort)
+fi
+
+if [[ -n "$CONFIG_FILTER" ]]; then
+  MATCHED=()
+  for CONFIG_PATH in "${CONFIG_FILES[@]}"; do
+    if matches_config_filter "$CONFIG_PATH" "$CONFIG_FILTER"; then
+      MATCHED+=( "$CONFIG_PATH" )
+    fi
+  done
+  CONFIG_FILES=( "${MATCHED[@]}" )
+fi
+
+if [[ -n "$CONFIG_FILTER" ]] && [[ ${#CONFIG_FILES[@]} -eq 0 ]]; then
+  echo "[ERROR] 未找到匹配配置: ${CONFIG_FILTER}" >&2
+  exit 1
 fi
 
 declare -a NAMES=()
@@ -63,7 +134,7 @@ for NAME in "${NAMES[@]}"; do
 done
 
 # Also try single-process name in case deployment switched modes.
-if [[ ! " ${NAMES[*]} " =~ [[:space:]]dat_proxy[[:space:]] ]]; then
+if [[ -z "$CONFIG_FILTER" ]] && [[ ! " ${NAMES[*]} " =~ [[:space:]]dat_proxy[[:space:]] ]]; then
   if pm2 delete "dat_proxy" --namespace "$NAMESPACE" >/dev/null 2>&1; then
     echo "[INFO] Stopped: dat_proxy (namespace: ${NAMESPACE})"
     STOPPED=$((STOPPED + 1))
