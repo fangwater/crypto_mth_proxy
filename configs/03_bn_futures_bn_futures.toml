@@ -23,7 +23,7 @@ tick_interval_ms = 5000
 # Per-venue delay (us).
 open_delay_us = 2000
 hedge_delay_us = 2000
-tick_delay_us = 0
+tick_delay_us = 2000
 
 # Only publish these symbols.
 online_symbols = [
